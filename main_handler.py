@@ -177,10 +177,19 @@ class MainHandler(webapp2.RequestHandler):
     else:
       media = None
 
+    quotes = Quotes();
+    
+    #body['text'] = quotes.readQuote();
+    
     # self.mirror_service is initialized in util.auth_required.
-    self.mirror_service.timeline().insert(body=body, media_body=media).execute()
+    #self.mirror_service.timeline().insert(body=body, media_body=media).execute()
+    
+    for line in open('quotes/quotes_on_success.txt', 'r').readlines():
+        body['text'] = line
+        self.mirror_service.timeline().insert(body=body, media_body=media).execute()
+        
     return  'A timeline item has been inserted.'
-
+      
   def _insert_paginated_item(self):
     """Insert a paginated timeline item."""
     logging.info('Inserting paginated timeline item')
@@ -276,7 +285,24 @@ class MainHandler(webapp2.RequestHandler):
     return 'A timeline item has been deleted.'
 	
 
+class Quotes:
+        filename = 'quotes/quotes_on_success.txt'
 
+        def writeToFile(self):
+                file = open(self.filename, "w");
+                file.write("Quote of the day1\nQuote of the day2\n");
+                file.close();
+
+
+        def readFromFile(self):
+                file = open(self.filename, "r");
+                quote = file.readline();
+                return quote;
+
+        def readQuote(self):
+            #self.writeToFile();
+            return self.readFromFile();
+            
 MAIN_ROUTES = [
     ('/', MainHandler)
 ]
