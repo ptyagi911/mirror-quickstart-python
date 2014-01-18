@@ -34,7 +34,8 @@ from oauth2client.appengine import StorageByKeyName
 
 from model import Credentials
 import util
-
+from threading import Thread
+import time
 
 jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
@@ -177,19 +178,49 @@ class MainHandler(webapp2.RequestHandler):
     else:
       media = None
 
-    quotes = Quotes();
+    t = Thread(target=self.update_quote, args=(self.mirror_service, 1,))
+    t.start()  
+    
+    #quotes = Quotes();
     
     #body['text'] = quotes.readQuote();
     
     # self.mirror_service is initialized in util.auth_required.
     #self.mirror_service.timeline().insert(body=body, media_body=media).execute()
     
-    for line in open('quotes/quotes_on_success.txt', 'r').readlines():
-        body['text'] = line
-        self.mirror_service.timeline().insert(body=body, media_body=media).execute()
-        
-    return  'A timeline item has been inserted.'
+#     for line in open('quotes/quotes_on_success.txt', 'r').readlines():
+#         body['text'] = line
+#         self.mirror_service.timeline().insert(body=body, media_body=media).execute()
+#         
+#     return  'A timeline item has been inserted.'
       
+  
+    
+  def update_quote(self, service, delay):
+    while True:
+      item_id = 'be63e6f9-b24d-4804-8c24-e185f37ba9fb';
+      timestamp = int(time.time())
+      text = 'I have Updated Priyanka' + str(timestamp)
+      self.update_timeline_item(service, item_id, text, 'DEFAULT');
+      time.sleep(delay)
+
+  def update_timeline_item(self, service, item_id, new_text, 
+                           new_notification_level=None):
+    try:
+      # First retrieve the timeline item from the API.
+      timeline_item = service.timeline().get(id=item_id).execute()
+      # Update the timeline item's metadata.
+      timeline_item['text'] = new_text
+      if new_notification_level:
+        timeline_item['notification'] = {'level': new_notification_level}
+      elif 'notification' in timeline_item:
+        timeline_item.pop('notification')
+      return service.timeline().update(id=item_id, body=timeline_item).execute()
+    except errors.HttpError, error:
+      print 'An error occurred: %s' % error
+    
+    return None 
+   
   def _insert_paginated_item(self):
     """Insert a paginated timeline item."""
     logging.info('Inserting paginated timeline item')

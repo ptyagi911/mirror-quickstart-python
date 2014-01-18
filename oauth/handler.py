@@ -25,9 +25,11 @@ from oauth2client.appengine import StorageByKeyName
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
 
-from model import Credentials
+from model import Credentials 
 import util
-
+from apiclient import errors
+from threading import Thread
+import time
 
 SCOPES = ('https://www.googleapis.com/auth/glass.timeline '
           'https://www.googleapis.com/auth/glass.location '
@@ -95,8 +97,33 @@ class OAuthCodeExchangeHandler(OAuthBaseRequestHandler):
     self._perform_post_auth_tasks(userid, creds)
     self.redirect('/')
 
+  def _insert_timeline_item(self, service, text, notification_level=None):
+    """Insert a new timeline item in the user's glass.
+    
+    Args:
+    service: Authorized Mirror service.
+    text: timeline item's text.
+    content_type: Optional attachment's content type (supported content types
+                  are 'image/*', 'video/*' and 'audio/*').
+    attachment: Optional attachment as data string.
+    notification_level: Optional notification level, supported values are None
+                        and 'AUDIO_ONLY'.
+
+    Returns:
+    Inserted timeline item on success, None otherwise.
+    """
+    timeline_item = {'text': text}
+
+    if notification_level:
+      timeline_item['notification'] = {'level': notification_level}
+  
+    try:
+      return service.timeline().insert(body=timeline_item).execute()
+    except errors.HttpError, error:
+      print 'An error occurred: %s' % error
+        
   def _perform_post_auth_tasks(self, userid, creds):
-    """Perform commong post authorization tasks.
+    """Perform common post authorization tasks.
 
     Subscribes the service to notifications for the user and add one sharing
     contact.
@@ -137,8 +164,69 @@ class OAuthCodeExchangeHandler(OAuthBaseRequestHandler):
             'level': 'DEFAULT'
         }
     }
-    mirror_service.timeline().insert(body=timeline_item_body).execute()
+    #mirror_service.timeline().insert(body=timeline_item_body).execute()
+    timestamp = int(time.time())
+    text = 'I have Created Priyanka' + str(timestamp)
+    #self._insert_timeline_item(mirror_service, text, 'DEFAULT')
+    
+    #print 'Listing Priyanka items\n'
+    #print self.retrieve_all_timeline_tems(mirror_service)
+    #dcb3184c-5ec2-401e-9cd8-cc01d6640729
+    
+#   t = Thread(target=self.update_quote, args=(mirror_service, 1,))
+#   t.start()  
+#     
+# def update_quote(self, service, delay):
+#   while True:
+#     item_id = 'be63e6f9-b24d-4804-8c24-e185f37ba9fb';
+#     timestamp = int(time.time())
+#     text = 'I have Updated Priyanka' + timestamp
+#     self.update_timeline_item(service, item_id, text, 'DEFAULT');
+#     time.sleep(delay)
 
+ 
+  def update_timeline_item(self, service, item_id, new_text, 
+                           new_notification_level=None):
+    try:
+      # First retrieve the timeline item from the API.
+      timeline_item = service.timeline().get(id=item_id).execute()
+      # Update the timeline item's metadata.
+      timeline_item['text'] = new_text
+      if new_notification_level:
+        timeline_item['notification'] = {'level': new_notification_level}
+      elif 'notification' in timeline_item:
+        timeline_item.pop('notification')
+      return service.timeline().update(id=item_id, body=timeline_item).execute()
+    except errors.HttpError, error:
+      print 'An error occurred: %s' % error
+    
+    return None
+      
+  def retrieve_all_timeline_tems(self, service):
+    """Retrieve all timeline items for the current user.
+
+    Args:
+    service: Authorized Mirror service.
+
+    Returns:
+    Collection of timeline items on success, None otherwise.
+    """
+    result = []
+    request = service.timeline().list()
+    while request:
+      try:
+        timeline_items = request.execute()
+        items = timeline_items.get('items', [])
+        if items:
+          result.extend(timeline_items.get('items', []))
+          request = service.timeline().list_next(request, timeline_items)
+        else:
+          # No more items to retrieve.
+          break
+      except errors.HttpError, error:
+          print 'An error occurred: %s' % error
+          break
+      return result
 
 OAUTH_ROUTES = [
     ('/auth', OAuthCodeRequestHandler),
