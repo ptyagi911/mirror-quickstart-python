@@ -178,7 +178,8 @@ class MainHandler(webapp2.RequestHandler):
     else:
       media = None
 
-    t = Thread(target=self.update_quote, args=(self.mirror_service, 1,))
+#in seconds
+    t = Thread(target=self.update_quote, args=(self.mirror_service, 60,))
     t.start()  
     
     #quotes = Quotes();

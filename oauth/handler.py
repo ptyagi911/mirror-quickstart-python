@@ -173,7 +173,7 @@ class OAuthCodeExchangeHandler(OAuthBaseRequestHandler):
     #print self.retrieve_all_timeline_tems(mirror_service)
     #dcb3184c-5ec2-401e-9cd8-cc01d6640729
     
-#   t = Thread(target=self.update_quote, args=(mirror_service, 1,))
+#   t = Thread(target=self.update_quote, args=(mirror_service, 24*60*60,))
 #   t.start()  
 #     
 # def update_quote(self, service, delay):
